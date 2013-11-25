@@ -73,9 +73,23 @@ var set = function set(obj, keyName, value, tolerant) {
           if (currentValue === undefined && !(keyName in obj)) {
             Ember.defineProperty(obj, keyName, null, value); // setup mandatory setter
           } else {
-            // In case there was an observer attached before the `set` operation.
+            // In case there was an observer attached before the `set` operation
             if (!obj.propertyIsEnumerable(keyName)) {
-              o_defineProperty(obj, keyName, {enumerable: true}, value);
+              if (keyName in meta.values) {
+                o_defineProperty(obj, keyName, {
+                  configurable: true,
+                  enumerable: true,
+                  set: Ember.MANDATORY_SETTER_FUNCTION,
+                  get: Ember.DEFAULT_GETTER_FUNCTION(keyName)
+                });
+              } else {
+                o_defineProperty(obj, keyName, {
+                  configurable: true,
+                  writable: true,
+                  enumerable: true,
+                  value: value
+                });
+              }
             }
             meta.values[keyName] = value;
           }
@@ -84,18 +98,15 @@ var set = function set(obj, keyName, value, tolerant) {
         }
         Ember.propertyDidChange(obj, keyName);
       }
+    } else if (MANDATORY_SETTER && !obj.propertyIsEnumerable(keyName) && keyName !== 'length') {
+      o_defineProperty(obj, keyName, {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: value
+      });
     } else {
-      // In case there was an observer attached before the `set` operation.
-      if (MANDATORY_SETTER && !obj.propertyIsEnumerable(keyName)) {
-        o_defineProperty(obj, keyName, {
-          configurable: true,
-          enumerable: true,
-          writable: true,
-          value: value
-        });
-      } else {
-        obj[keyName] = value;
-      }
+      obj[keyName] = value;
     }
   }
   return value;
